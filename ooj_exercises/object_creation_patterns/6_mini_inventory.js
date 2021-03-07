@@ -54,7 +54,6 @@ ITEM CREATOR
 
 const ItemCreator = {
   areAllValid(name, category, quantity) {
-    debugger;
     name = name.replace(/\s/g, '');
 
     return (name.length >= 5) && (category.length >= 5) &&
@@ -85,20 +84,89 @@ const ItemCreator = {
 
 
 const ItemManager = (() => {
+  function findObj(sku) {
+    return allItems.filter(obj => obj.SKU === sku)[0];
+  }
+
+  let allItems = [];
+
   return {
-    items: [],
+    items: allItems,
 
     create(name, category, quantity) {
       let newItem = ItemCreator.newItem(name, category, quantity);
       if (newItem.notValid) {
         return false
       } else {
-        this.items.push(newItem);
+        allItems.push(newItem);
       }
-    }
+    },
+
+    update(sku, obj) {
+      let chosenObj = findObj(sku);
+      
+      Object.keys(obj).forEach (key => {
+        chosenObj[key] = obj[key];
+      });
+
+      return chosenObj;
+    },
+
+    delete(sku) {
+      let toDeleteIdx = allItems.findIndex(obj => {
+        return obj.SKU === sku;
+      });
+      
+      return allItems.splice(toDeleteIdx, 1);
+    },
+
+    inStock() {
+      return allItems.filter(obj => {
+        return obj.quantity > 0;
+      });
+    },
+
+    itemsInCategory(category) {
+      return allItems.filter(obj => {
+        return obj.category === category;
+      });
+    },
   }
 
 })();
+
+const ReportManager = (() => {
+  let items;
+
+  function findObj(sku) {
+    debugger;
+    return items.items.filter(obj => obj.SKU === sku)[0];
+  }
+  
+  return {
+    init(itemManager) {
+      items = itemManager;
+    },
+
+    createReporter(sku) {
+      let chosenObj = findObj(sku);
+      debugger;
+      return {
+        itemInfo() {
+          Object.keys(chosenObj).forEach (key => {
+            console.log(key + ': ' + chosenObj[key]);
+          });
+        }
+      }
+    },
+
+    reportInStock() {
+      let stockedItems = items.inStock();
+      console.log(stockedItems.map (obj => obj.name).join(', '));
+    }
+  }
+})();
+
 
 ItemManager.create('basket ball', 'sports', 0);           // valid item
 ItemManager.create('asd', 'sports', 0);
@@ -108,6 +176,36 @@ ItemManager.create('football', 'sports', 3);              // valid item
 ItemManager.create('kitchen pot', 'cooking items', 0);
 ItemManager.create('kitchen pot', 'cooking', 3);          // valid item
 
-console.log(ItemManager.items);  // 3/5/21, all of this works so far
+ItemManager.items;       
+// returns list with the 4 valid items
 
+ReportManager.init(ItemManager);
+//ReportManager.reportInStock();
+// logs soccer ball,football,kitchen pot
 
+ItemManager.update('SOCSP', { quantity: 0 });
+ItemManager.inStock();
+// returns list with the item objects for football and kitchen pot
+//ReportManager.reportInStock();
+// logs football,kitchen pot
+ItemManager.itemsInCategory('sports');
+// returns list with the item objects for basket ball, soccer ball, and football
+ItemManager.delete('SOCSP');
+console.log(ItemManager.items);
+// returns list with the remaining 3 valid items (soccer ball is removed from the list)
+
+const kitchenPotReporter = ReportManager.createReporter('KITCO');
+kitchenPotReporter.itemInfo();
+// logs
+// skuCode: KITCO
+// itemName: kitchen pot
+// category: cooking
+// quantity: 3
+
+ItemManager.update('KITCO', { quantity: 10 });
+kitchenPotReporter.itemInfo();
+// logs
+// skuCode: KITCO
+// itemName: kitchen pot
+// category: cooking
+// quantity: 10
